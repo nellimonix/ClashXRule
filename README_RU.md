@@ -2,7 +2,7 @@
 
 [English Version](README.md) | Русская версия
 
-Этот проект генерирует правила для [Clash Premium](https://github.com/Dreamacro/clash/releases/tag/premium) на основе списков доменов от [OpenCCK](https://iplist.opencck.org/). Автоматическая сборка происходит ежедневно в 06:00 UTC с использованием GitHub Actions.
+Этот проект генерирует правила для [Clash Premium](https://github.com/Dreamacro/clash/releases/tag/premium) на основе списков доменов от [OpenCCK](https://iplist.opencck.org/). Автоматическая сборка происходит ежедневно в 21:00 UTC с использованием GitHub Actions.
 
 ## Доступные списки правил
 
