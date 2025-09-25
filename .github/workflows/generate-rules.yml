@@ -2,12 +2,16 @@ name: Generate RULE-SET from OpenCCK Lists
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * *"  # Ежедневно в 6:00 UTC
+    - cron: "0 21 * * *"  # 00:00 MSK = 21:00 UTC
   push:
     branches:
       - main
     paths-ignore:
       - "**/README.md"
+
+permissions:
+  contents: write
+  actions: read
 
 jobs:
   build:
