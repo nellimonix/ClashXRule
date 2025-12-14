@@ -29,6 +29,7 @@ jobs:
           echo "opencck_tools=https://iplist.opencck.org/?format=text&data=domains&group=tools" >> $GITHUB_ENV
           echo "opencck_music=https://iplist.opencck.org/?format=text&data=domains&group=music" >> $GITHUB_ENV
           echo "opencck_roblox=https://iplist.opencck.org/?format=text&data=domains&site=roblox.com" >> $GITHUB_ENV
+          echo "opencck_roblox2=https://iplist.opencck.org/?format=text&data=domains&wildcard=1&site=roblox.com" >> $GITHUB_ENV
         shell: bash
 
       - name: Checkout the main branch
@@ -127,6 +128,18 @@ jobs:
               echo "  - '+.${domain#www.}'" >> roblox.txt
             else
               echo "  - '+.${domain}'" >> roblox.txt
+            fi
+          done
+
+      - name: Generate roblox2.txt file
+        run: |
+          echo "payload:" > roblox2.txt
+          curl -sSL ${opencck_roblox2} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
+            if [[ $domain =~ ^www\. ]]; then
+              echo "  - '${domain}'" >> roblox2.txt
+              echo "  - '+.${domain#www.}'" >> roblox2.txt
+            else
+              echo "  - '+.${domain}'" >> roblox2.txt
             fi
           done
 
