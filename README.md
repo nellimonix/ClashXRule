@@ -38,6 +38,10 @@ Use these URLs in your Clash configuration in the `rule-providers` section:
   - `https://raw.githubusercontent.com/nellimonix/ClashXRule/release/music.txt`
   - `https://cdn.jsdelivr.net/gh/nellimonix/ClashXRule@release/music.txt`
 
+- **Roblox (roblox.txt)**:
+  - `https://raw.githubusercontent.com/nellimonix/ClashXRule/release/roblox.txt`
+  - `https://cdn.jsdelivr.net/gh/nellimonix/ClashXRule@release/roblox.txt`
+
 ## Usage
 
 ### Rule Providers Configuration
