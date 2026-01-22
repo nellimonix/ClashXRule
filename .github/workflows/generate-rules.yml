@@ -33,115 +33,64 @@ jobs:
         shell: bash
 
       - name: Checkout the main branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Generate porno.txt file
+      - name: Generate rule files
         run: |
-          echo "payload:" > porno.txt
-          curl -sSL ${opencck_porno} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> porno.txt
-              echo "  - '+.${domain#www.}'" >> porno.txt
-            else
-              echo "  - '+.${domain}'" >> porno.txt
+          generate_rules() {
+            local url=$1
+            local output=$2
+            local min_domains=${3:-1}
+            
+            echo "Generating $output from $url"
+            echo "payload:" > "$output"
+            
+            response=$(curl -sSL -w "\n%{http_code}" "$url")
+            http_code=$(echo "$response" | tail -n1)
+            content=$(echo "$response" | sed '$d')
+            
+            if [ "$http_code" != "200" ]; then
+              echo "❌ Error: HTTP $http_code for $output"
+              return 1
             fi
-          done
-
-      - name: Generate discord.txt file
-        run: |
-          echo "payload:" > discord.txt
-          curl -sSL ${opencck_discord} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> discord.txt
-              echo "  - '+.${domain#www.}'" >> discord.txt
-            else
-              echo "  - '+.${domain}'" >> discord.txt
+            
+            if echo "$content" | grep -qi "<html>\|<body>\|nginx\|gateway time-out"; then
+              echo "❌ Error: HTML error page received for $output"
+              return 1
             fi
-          done
-
-      - name: Generate youtube.txt file
-        run: |
-          echo "payload:" > youtube.txt
-          curl -sSL ${opencck_youtube} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> youtube.txt
-              echo "  - '+.${domain#www.}'" >> youtube.txt
-            else
-              echo "  - '+.${domain}'" >> youtube.txt
+            
+            domain_count=$(echo "$content" | grep -v '^#' | grep -v '^$' | wc -l)
+            if [ "$domain_count" -lt "$min_domains" ]; then
+              echo "❌ Error: Only $domain_count domains found (expected >=$min_domains) for $output"
+              return 1
             fi
-          done
-
-      - name: Generate socials.txt file
-        run: |
-          echo "payload:" > socials.txt
-          curl -sSL ${opencck_socials} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> socials.txt
-              echo "  - '+.${domain#www.}'" >> socials.txt
-            else
-              echo "  - '+.${domain}'" >> socials.txt
-            fi
-          done
-
-      - name: Generate torrent.txt file
-        run: |
-          echo "payload:" > torrent.txt
-          curl -sSL ${opencck_torrent} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> torrent.txt
-              echo "  - '+.${domain#www.}'" >> torrent.txt
-            else
-              echo "  - '+.${domain}'" >> torrent.txt
-            fi
-          done
-
-      - name: Generate tools.txt file
-        run: |
-          echo "payload:" > tools.txt
-          curl -sSL ${opencck_tools} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> tools.txt
-              echo "  - '+.${domain#www.}'" >> tools.txt
-            else
-              echo "  - '+.${domain}'" >> tools.txt
-            fi
-          done
-
-      - name: Generate music.txt file
-        run: |
-          echo "payload:" > music.txt
-          curl -sSL ${opencck_music} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> music.txt
-              echo "  - '+.${domain#www.}'" >> music.txt
-            else
-              echo "  - '+.${domain}'" >> music.txt
-            fi
-          done
-
-      - name: Generate roblox.txt file
-        run: |
-          echo "payload:" > roblox.txt
-          curl -sSL ${opencck_roblox} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> roblox.txt
-              echo "  - '+.${domain#www.}'" >> roblox.txt
-            else
-              echo "  - '+.${domain}'" >> roblox.txt
-            fi
-          done
-
-      - name: Generate roblox2.txt file
-        run: |
-          echo "payload:" > roblox2.txt
-          curl -sSL ${opencck_roblox2} | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-            if [[ $domain =~ ^www\. ]]; then
-              echo "  - '${domain}'" >> roblox2.txt
-              echo "  - '+.${domain#www.}'" >> roblox2.txt
-            else
-              echo "  - '+.${domain}'" >> roblox2.txt
-            fi
-          done
+            
+            echo "✅ Processing $domain_count domains for $output"
+            
+            echo "$content" | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
+              if [[ $domain =~ ^www\. ]]; then
+                echo "  - '${domain}'" >> "$output"
+                echo "  - '+.${domain#www.}'" >> "$output"
+              else
+                echo "  - '+.${domain}'" >> "$output"
+              fi
+            done
+            
+            return 0
+          }
+          
+          # Генерируем все файлы
+          generate_rules "${opencck_porno}" "porno.txt" 10 || exit 1
+          generate_rules "${opencck_discord}" "discord.txt" 5 || exit 1
+          generate_rules "${opencck_youtube}" "youtube.txt" 5 || exit 1
+          generate_rules "${opencck_socials}" "socials.txt" 5 || exit 1
+          generate_rules "${opencck_torrent}" "torrent.txt" 5 || exit 1
+          generate_rules "${opencck_tools}" "tools.txt" 5 || exit 1
+          generate_rules "${opencck_music}" "music.txt" 5 || exit 1
+          generate_rules "${opencck_roblox}" "roblox.txt" 5 || exit 1
+          generate_rules "${opencck_roblox2}" "roblox2.txt" 5 || exit 1
+          
+          echo "All files generated successfully!"
 
       - name: Move files to publish directory
         run: |
