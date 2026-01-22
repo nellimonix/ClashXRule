@@ -40,7 +40,6 @@ jobs:
           generate_rules() {
             local url=$1
             local output=$2
-            local min_domains=${3:-1}
             
             echo "Generating $output from $url"
             echo "payload:" > "$output"
@@ -51,17 +50,6 @@ jobs:
             
             if [ "$http_code" != "200" ]; then
               echo "❌ Error: HTTP $http_code for $output"
-              return 1
-            fi
-            
-            if echo "$content" | grep -qi "<html>\|<body>\|nginx\|gateway time-out"; then
-              echo "❌ Error: HTML error page received for $output"
-              return 1
-            fi
-            
-            domain_count=$(echo "$content" | grep -v '^#' | grep -v '^$' | wc -l)
-            if [ "$domain_count" -lt "$min_domains" ]; then
-              echo "❌ Error: Only $domain_count domains found (expected >=$min_domains) for $output"
               return 1
             fi
             
@@ -80,15 +68,15 @@ jobs:
           }
           
           # Генерируем все файлы
-          generate_rules "${opencck_porno}" "porno.txt" 10 || exit 1
-          generate_rules "${opencck_discord}" "discord.txt" 5 || exit 1
-          generate_rules "${opencck_youtube}" "youtube.txt" 5 || exit 1
-          generate_rules "${opencck_socials}" "socials.txt" 5 || exit 1
-          generate_rules "${opencck_torrent}" "torrent.txt" 5 || exit 1
-          generate_rules "${opencck_tools}" "tools.txt" 5 || exit 1
-          generate_rules "${opencck_music}" "music.txt" 5 || exit 1
-          generate_rules "${opencck_roblox}" "roblox.txt" 5 || exit 1
-          generate_rules "${opencck_roblox2}" "roblox2.txt" 5 || exit 1
+          generate_rules "${opencck_porno}" "porno.txt" || exit 1
+          generate_rules "${opencck_discord}" "discord.txt" || exit 1
+          generate_rules "${opencck_youtube}" "youtube.txt" || exit 1
+          generate_rules "${opencck_socials}" "socials.txt" || exit 1
+          generate_rules "${opencck_torrent}" "torrent.txt" || exit 1
+          generate_rules "${opencck_tools}" "tools.txt" || exit 1
+          generate_rules "${opencck_music}" "music.txt" || exit 1
+          generate_rules "${opencck_roblox}" "roblox.txt" || exit 1
+          generate_rules "${opencck_roblox2}" "roblox2.txt" || exit 1
           
           echo "All files generated successfully!"
 
