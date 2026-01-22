@@ -53,8 +53,6 @@ jobs:
               return 1
             fi
             
-            echo "✅ Processing $domain_count domains for $output"
-            
             echo "$content" | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
               if [[ $domain =~ ^www\. ]]; then
                 echo "  - '${domain}'" >> "$output"
