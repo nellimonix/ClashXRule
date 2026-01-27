@@ -40,29 +40,40 @@ jobs:
           generate_rules() {
             local url=$1
             local output=$2
+            local max_attempts=3
+            local attempt=1
             
-            echo "Generating $output from $url"
-            echo "payload:" > "$output"
-            
-            response=$(curl -sSL -w "\n%{http_code}" "$url")
-            http_code=$(echo "$response" | tail -n1)
-            content=$(echo "$response" | sed '$d')
-            
-            if [ "$http_code" != "200" ]; then
-              echo "❌ Error: HTTP $http_code for $output"
-              return 1
-            fi
-            
-            echo "$content" | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
-              if [[ $domain =~ ^www\. ]]; then
-                echo "  - '${domain}'" >> "$output"
-                echo "  - '+.${domain#www.}'" >> "$output"
+            while [ $attempt -le $max_attempts ]; do
+              echo "Generating $output from $url (attempt $attempt/$max_attempts)"
+              echo "payload:" > "$output"
+              
+              response=$(curl -sSL -w "\n%{http_code}" "$url")
+              http_code=$(echo "$response" | tail -n1)
+              content=$(echo "$response" | sed '$d')
+              
+              if [ "$http_code" = "200" ]; then
+                echo "$content" | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
+                  if [[ $domain =~ ^www\. ]]; then
+                    echo "  - '${domain}'" >> "$output"
+                    echo "  - '+.${domain#www.}'" >> "$output"
+                  else
+                    echo "  - '+.${domain}'" >> "$output"
+                  fi
+                done
+                echo "✅ Success: $output"
+                return 0
               else
-                echo "  - '+.${domain}'" >> "$output"
+                echo "❌ Error: HTTP $http_code for $output (attempt $attempt/$max_attempts)"
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Waiting 5 seconds before retry..."
+                  sleep 5
+                fi
+                attempt=$((attempt + 1))
               fi
             done
             
-            return 0
+            echo "❌ Failed after $max_attempts attempts: $output"
+            return 1
           }
           
           # Генерируем все файлы
