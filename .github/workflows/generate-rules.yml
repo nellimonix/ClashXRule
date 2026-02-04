@@ -1,8 +1,10 @@
 name: Generate RULE-SET from OpenCCK Lists
+
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 21 * * *"  # 00:00 MSK = 21:00 UTC
+    # 06:17 и 18:17 по МСК
+    - cron: "17 3,15 * * *"
   push:
     branches:
       - main
@@ -21,13 +23,17 @@ jobs:
         run: |
           echo "RELEASE_NAME=Released on $(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
-          echo "opencck_porno=https://iplist.opencck.org/?format=text&data=domains&group=porn" >> $GITHUB_ENV
-          echo "opencck_discord=https://iplist.opencck.org/?format=text&data=domains&group=discord" >> $GITHUB_ENV
-          echo "opencck_youtube=https://iplist.opencck.org/?format=text&data=domains&group=youtube" >> $GITHUB_ENV
-          echo "opencck_socials=https://iplist.opencck.org/?format=text&data=domains&group=socials" >> $GITHUB_ENV
-          echo "opencck_torrent=https://iplist.opencck.org/?format=text&data=domains&group=torrent" >> $GITHUB_ENV
-          echo "opencck_tools=https://iplist.opencck.org/?format=text&data=domains&group=tools" >> $GITHUB_ENV
-          echo "opencck_music=https://iplist.opencck.org/?format=text&data=domains&group=music" >> $GITHUB_ENV
+
+          echo "opencck_base=https://iplist.opencck.org" >> $GITHUB_ENV
+
+          echo "opencck_group_porno=porn" >> $GITHUB_ENV
+          echo "opencck_group_discord=discord" >> $GITHUB_ENV
+          echo "opencck_group_youtube=youtube" >> $GITHUB_ENV
+          echo "opencck_group_socials=socials" >> $GITHUB_ENV
+          echo "opencck_group_torrent=torrent" >> $GITHUB_ENV
+          echo "opencck_group_tools=tools" >> $GITHUB_ENV
+          echo "opencck_group_music=music" >> $GITHUB_ENV
+
           echo "opencck_roblox=https://iplist.opencck.org/?format=text&data=domains&site=roblox.com" >> $GITHUB_ENV
           echo "opencck_roblox2=https://iplist.opencck.org/?format=text&data=domains&wildcard=1&site=roblox.com" >> $GITHUB_ENV
         shell: bash
@@ -36,23 +42,27 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Generate rule files
+        shell: bash
         run: |
-          generate_rules() {
-            local url=$1
-            local output=$2
-            local max_attempts=3
+          set -euo pipefail
+
+          generate_rules_url() {
+            local url="$1"
+            local output="$2"
+            local max_attempts=6
             local attempt=1
-            
+
             while [ $attempt -le $max_attempts ]; do
               echo "Generating $output from $url (attempt $attempt/$max_attempts)"
               echo "payload:" > "$output"
-              
-              response=$(curl -sSL -w "\n%{http_code}" "$url")
-              http_code=$(echo "$response" | tail -n1)
-              content=$(echo "$response" | sed '$d')
-              
-              if [ "$http_code" = "200" ]; then
-                echo "$content" | grep -v '^#' | grep -v '^$' | while IFS= read -r domain; do
+
+              if content="$(curl -fsSL \
+                  --connect-timeout 15 --max-time 120 \
+                  --retry 8 --retry-all-errors --retry-delay 2 --retry-max-time 180 \
+                  -H 'User-Agent: github-actions (rule-set generator)' \
+                  "$url")"; then
+
+                echo "$content" | grep -vE '^\s*#' | grep -vE '^\s*$' | while IFS= read -r domain; do
                   if [[ $domain =~ ^www\. ]]; then
                     echo "  - '${domain}'" >> "$output"
                     echo "  - '+.${domain#www.}'" >> "$output"
@@ -60,33 +70,38 @@ jobs:
                     echo "  - '+.${domain}'" >> "$output"
                   fi
                 done
+
                 echo "✅ Success: $output"
                 return 0
               else
-                echo "❌ Error: HTTP $http_code for $output (attempt $attempt/$max_attempts)"
-                if [ $attempt -lt $max_attempts ]; then
-                  echo "Waiting 5 seconds before retry..."
-                  sleep 5
-                fi
+                echo "❌ curl failed for $output (attempt $attempt/$max_attempts)"
+                sleep $((attempt * 3))
                 attempt=$((attempt + 1))
               fi
             done
-            
+
             echo "❌ Failed after $max_attempts attempts: $output"
             return 1
           }
-          
-          # Генерируем все файлы
-          generate_rules "${opencck_porno}" "porno.txt" || exit 1
-          generate_rules "${opencck_discord}" "discord.txt" || exit 1
-          generate_rules "${opencck_youtube}" "youtube.txt" || exit 1
-          generate_rules "${opencck_socials}" "socials.txt" || exit 1
-          generate_rules "${opencck_torrent}" "torrent.txt" || exit 1
-          generate_rules "${opencck_tools}" "tools.txt" || exit 1
-          generate_rules "${opencck_music}" "music.txt" || exit 1
-          generate_rules "${opencck_roblox}" "roblox.txt" || exit 1
-          generate_rules "${opencck_roblox2}" "roblox2.txt" || exit 1
-          
+
+          generate_rules_group() {
+            local group="$1"
+            local output="$2"
+            local url="${opencck_base}/?format=text&data=domains&group=${group}"
+            generate_rules_url "$url" "$output"
+          }
+
+          generate_rules_group "${opencck_group_porno}"   "porno.txt"
+          generate_rules_group "${opencck_group_discord}" "discord.txt"
+          generate_rules_group "${opencck_group_youtube}" "youtube.txt"
+          generate_rules_group "${opencck_group_socials}" "socials.txt"
+          generate_rules_group "${opencck_group_torrent}" "torrent.txt"
+          generate_rules_group "${opencck_group_tools}"   "tools.txt"
+          generate_rules_group "${opencck_group_music}"   "music.txt"
+
+          generate_rules_url "${opencck_roblox}"  "roblox.txt"
+          generate_rules_url "${opencck_roblox2}" "roblox2.txt"
+
           echo "All files generated successfully!"
 
       - name: Move files to publish directory
