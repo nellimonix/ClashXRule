@@ -36,6 +36,8 @@ jobs:
 
           echo "opencck_roblox=https://iplist.opencck.org/?format=text&data=domains&site=roblox.com" >> $GITHUB_ENV
           echo "opencck_roblox2=https://iplist.opencck.org/?format=text&data=domains&wildcard=1&site=roblox.com" >> $GITHUB_ENV
+
+          echo "antifilter_domains=https://antifilter.download/list/domains.lst" >> $GITHUB_ENV
         shell: bash
 
       - name: Checkout the main branch
@@ -101,6 +103,8 @@ jobs:
 
           generate_rules_url "${opencck_roblox}"  "roblox.txt"
           generate_rules_url "${opencck_roblox2}" "roblox2.txt"
+
+          generate_rules_url "${antifilter_domains}" "antifilter.txt"
 
           echo "All files generated successfully!"
 
