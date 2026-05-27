@@ -34,8 +34,10 @@ jobs:
           echo "opencck_group_tools=tools" >> $GITHUB_ENV
           echo "opencck_group_music=music" >> $GITHUB_ENV
 
-          echo "opencck_roblox=https://iplist.opencck.org/?format=text&data=domains&site=roblox.com" >> $GITHUB_ENV
-          echo "opencck_telegram=https://iplist.opencck.org/?format=text&data=domains&site=telegram.org" >> $GITHUB_ENV
+          echo "opencck_roblox=https://iplist.opencck.org/?format=text&data=domains&site=roblox.com&wildcard=1" >> $GITHUB_ENV
+          echo "opencck_telegram=https://iplist.opencck.org/?format=text&data=domains&site=telegram.org&wildcard=1" >> $GITHUB_ENV
+
+          echo "telegram_cidr=https://core.telegram.org/resources/cidr.txt" >> $GITHUB_ENV
 
           echo "antifilter_domains=https://antifilter.download/list/domains.lst" >> $GITHUB_ENV
         shell: bash
@@ -87,8 +89,44 @@ jobs:
           generate_rules_group() {
             local group="$1"
             local output="$2"
-            local url="${opencck_base}/?format=text&data=domains&group=${group}"
+            local url="${opencck_base}/?format=text&data=domains&group=${group}&wildcard=1"
             generate_rules_url "$url" "$output"
+          }
+
+          generate_cidr_url() {
+            local url="$1"
+            local output="$2"
+            local max_attempts=6
+            local attempt=1
+
+            while [ $attempt -le $max_attempts ]; do
+              echo "Generating $output from $url (attempt $attempt/$max_attempts)"
+              echo "payload:" > "$output"
+
+              if content="$(curl -fsSL \
+                  --connect-timeout 15 --max-time 120 \
+                  --retry 8 --retry-all-errors --retry-delay 2 --retry-max-time 180 \
+                  -H 'User-Agent: github-actions (rule-set generator)' \
+                  "$url")"; then
+
+                # Оставляем только IPv4 CIDR (отбрасываем IPv6, комменты, пустые
+                # строки), приводим к виду '- cidr' и удаляем дубликаты через sort -u
+                echo "$content" | tr -d '\r' | grep -vE '^\s*#' | grep -vE '^\s*$' \
+                  | grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}/[0-9]{1,2}$' | while IFS= read -r cidr; do
+                  echo "  - '${cidr}'"
+                done | sort -u >> "$output"
+
+                echo "✅ Success: $output"
+                return 0
+              else
+                echo "❌ curl failed for $output (attempt $attempt/$max_attempts)"
+                sleep $((attempt * 3))
+                attempt=$((attempt + 1))
+              fi
+            done
+
+            echo "❌ Failed after $max_attempts attempts: $output"
+            return 1
           }
 
           generate_rules_group "${opencck_group_porno}"   "porno.txt"
@@ -101,6 +139,8 @@ jobs:
 
           generate_rules_url "${opencck_roblox}"  "roblox.txt"
           generate_rules_url "${opencck_telegram}" "telegram.txt"
+
+          generate_cidr_url "${telegram_cidr}" "telegram_cidr.txt"
 
           generate_rules_url "${antifilter_domains}" "antifilter.txt"
 
