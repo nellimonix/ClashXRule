@@ -64,14 +64,12 @@ jobs:
                   -H 'User-Agent: github-actions (rule-set generator)' \
                   "$url")"; then
 
+                # Обрабатываем домены: чистим от комментов, срезаем www., 
+                # приводим к виду +.домен.com и удаляем дубликаты через sort -u
                 echo "$content" | grep -vE '^\s*#' | grep -vE '^\s*$' | while IFS= read -r domain; do
-                  if [[ $domain =~ ^www\. ]]; then
-                    echo "  - '${domain}'" >> "$output"
-                    echo "  - '+.${domain#www.}'" >> "$output"
-                  else
-                    echo "  - '+.${domain}'" >> "$output"
-                  fi
-                done
+                  clean_domain="${domain#www.}"
+                  echo "  - '+.${clean_domain}'"
+                done | sort -u >> "$output"
 
                 echo "✅ Success: $output"
                 return 0
