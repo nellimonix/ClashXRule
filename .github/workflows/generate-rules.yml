@@ -34,7 +34,6 @@ jobs:
           echo "opencck_group_tools=tools" >> $GITHUB_ENV
           echo "opencck_group_music=music" >> $GITHUB_ENV
 
-          echo "opencck_roblox=https://iplist.opencck.org/?format=text&data=domains&site=roblox.com&wildcard=1" >> $GITHUB_ENV
           echo "opencck_telegram=https://iplist.opencck.org/?format=text&data=domains&site=telegram.org&wildcard=1" >> $GITHUB_ENV
 
           echo "telegram_cidr=https://core.telegram.org/resources/cidr.txt" >> $GITHUB_ENV
@@ -137,7 +136,6 @@ jobs:
           generate_rules_group "${opencck_group_tools}"   "tools.txt"
           generate_rules_group "${opencck_group_music}"   "music.txt"
 
-          generate_rules_url "${opencck_roblox}"  "roblox.txt"
           generate_rules_url "${opencck_telegram}" "telegram.txt"
 
           generate_cidr_url "${telegram_cidr}" "telegram_cidr.txt"
